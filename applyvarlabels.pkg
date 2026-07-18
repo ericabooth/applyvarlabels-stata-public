@@ -1,0 +1,30 @@
+v 3
+d applyvarlabels: apply variable labels to the data in memory from a two-column (Variable, Label) crosswalk
+d
+d Label the variables in memory from an Excel workbook or a delimited file
+d that lists each variable name beside the label it should carry.  Solves the
+d Statalist problem (thread 1768839) where a levelsof/tokenize loop puts the
+d wrong label on the wrong variable because levelsof sorts the labels
+d alphabetically.  applyvarlabels reads the crosswalk in row order and matches
+d every label to its variable BY NAME, never by position.  It writes a
+d capture-guarded relabel do-file (a variable named in the crosswalk but absent
+d from the data is skipped, not an error), runs it to apply the labels, and
+d prints an inventory of what did not line up: crosswalk rows with no such
+d variable, and variables in memory with no crosswalk row.  The data in memory
+d are never sorted, dropped, or reordered - the crosswalk is read in its own
+d frame, so nothing changes but the variable labels themselves.  The generated
+d do-file is a keepable, rerunnable artifact (see dofile()).  Reads .xlsx/.xls
+d and .csv/.tsv/.txt; nocase matches names ignoring case; norun writes the
+d relabel do-file without applying it.
+d
+d Requires: Stata 16.0 or newer
+d
+d Author: Eric A. Booth, Sr Researcher, Texas 2036
+d Support: eric.a.booth@gmail.com
+d
+d Distribution-Date: 20260718
+d
+f applyvarlabels.ado
+f applyvarlabels.sthlp
+f example_applyvarlabels.do
+f example_varlabels.xlsx

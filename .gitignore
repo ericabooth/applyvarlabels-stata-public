@@ -1,0 +1,9 @@
+*.dta
+*.log
+*.smcl
+*.xlsx
+!example_varlabels.xlsx
+relabel_*.do
+case_crosswalk.xlsx
+.DS_Store
+scratch/

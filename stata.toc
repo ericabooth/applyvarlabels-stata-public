@@ -1,0 +1,3 @@
+v 3
+d applyvarlabels: apply variable labels from a (Variable, Label) Excel/CSV crosswalk
+p applyvarlabels
