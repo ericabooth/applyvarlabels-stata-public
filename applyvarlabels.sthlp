@@ -55,8 +55,9 @@ you are handed a dataset of many variables, {it:none of them labeled}, together
 with a spreadsheet that lists each variable name beside the label it should
 carry.  The intuitive loop {c 45} {helpb levelsof} the labels, {helpb tokenize}
 the variables, and march down both at once {c 45} puts the wrong label on the
-wrong variable, because {cmd:levelsof} returns its list sorted
-{it:alphabetically} (and strips the quotes off the first entry).{p_end}
+wrong variable, because {cmd:levelsof} returns the distinct labels sorted
+{it:alphabetically}, so pairing them positionally with the variables lines them
+up in the wrong order.{p_end}
 
 {pstd}
 {cmd:applyvarlabels} reads the crosswalk in {bf:row order} and matches every
@@ -175,7 +176,7 @@ no matching variable and the one variable with no crosswalk row.{p_end}
 {synopt :{cmd:r(N_applied)}}variables that received a label{p_end}
 {synopt :{cmd:r(N_nomatch)}}crosswalk rows with no matching variable{p_end}
 {synopt :{cmd:r(N_nolabel)}}variables in memory with no crosswalk row{p_end}
-{synopt :{cmd:r(N_quoted)}}labels whose straight quotes were normalized to curly{p_end}
+{synopt :{cmd:r(N_normalized)}}labels altered for Stata (straight quotes, backticks){p_end}
 {synopt :{cmd:r(N_long)}}labels over 80 characters (truncated by Stata){p_end}
 
 {p2col 5 18 22 2: Macros}{p_end}
@@ -184,14 +185,14 @@ no matching variable and the one variable with no crosswalk row.{p_end}
 {synopt :{cmd:r(nolabel)}}variables in memory with no crosswalk row{p_end}
 {synopt :{cmd:r(dups)}}variables named more than once in the crosswalk (last label wins){p_end}
 {synopt :{cmd:r(blanks)}}variables whose crosswalk label cell was empty (skipped){p_end}
-{synopt :{cmd:r(quoted)}}variables whose label had straight quotes normalized to curly{p_end}
+{synopt :{cmd:r(normalized)}}variables whose label was altered for Stata (curly quotes, apostrophes){p_end}
 {synopt :{cmd:r(dofile)}}path of the generated relabel do-file{p_end}
 {synopt :{cmd:r(smcl)}}path of the inventory {cmd:.smcl} file{p_end}
 {p2colreset}{...}
 
-{pstd}Under {cmd:norun}, {cmd:r(N_applied)} counts the label lines written to
-the do-file (which is left for you to run), and the labels are not yet on the
-data.{p_end}
+{pstd}Under {cmd:norun}, {cmd:r(N_applied)} counts the variables that would be
+labeled (the do-file is written and left for you to run), and the labels are not
+yet on the data.{p_end}
 
 
 {marker remarks}{...}
@@ -213,13 +214,17 @@ are trimmed.{p_end}
 
 {pstd}{bf:Labels are capped at 80 characters.}  Stata truncates a variable
 label longer than 80 characters; {cmd:applyvarlabels} counts such labels in
-{cmd:r(N_long)} and cautions you rather than failing.  Apostrophes and
-ampersands in a label are preserved (the do-file uses compound quotes).  A
-{it:straight double quote} ({cmd:{c 34}}) cannot be stored in a Stata variable
-label at all {c 45} {helpb label:label variable} cannot parse one {c 45} so
-{cmd:applyvarlabels} converts straight quotes in a label to typographic
-(curly) quotes, applies the readable result, and lists the affected variables
-in {cmd:r(quoted)} with a note.{p_end}
+{cmd:r(N_long)} and cautions you rather than failing.{p_end}
+
+{pstd}{bf:Special characters.}  Apostrophes, ampersands, and dollar signs are
+preserved exactly {c 45} a {cmd:{c 36}}name in a label is escaped in the
+generated do-file so it is not macro-expanded when that file runs.  Two
+characters a Stata variable label cannot carry are normalized instead, and the
+affected variables are listed in {cmd:r(normalized)} with a note: a
+{it:straight double quote} ({cmd:{c 34}}), which {helpb label:label variable}
+cannot parse, becomes a typographic (curly) quote; and a {it:backtick}
+({cmd:{c 96}}), which would open a macro reference when the relabel do-file
+runs, becomes an apostrophe.{p_end}
 
 {pstd}{bf:Nothing else changes.}  The crosswalk is read in a separate frame;
 the data in memory keep their sort order, their observations, and their

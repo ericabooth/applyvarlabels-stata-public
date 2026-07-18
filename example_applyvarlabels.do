@@ -105,4 +105,12 @@ import excel using "`xlsx'", sheet("data") firstrow clear
 applyvarlabels using "`xlsx'", sheet("var_labels") norun dofile("relabel_preview.do") replace
 di as txt "labels NOT yet applied; preview written to r(dofile) = " as res "`r(dofile)'"
 
+* ============================================================================
+* Tidy up the demonstration files this walkthrough wrote into the current
+* directory (in real use you would keep the relabel do-file you name).
+* ============================================================================
+foreach g in relabel_survey.do case_crosswalk.xlsx relabel_preview.do {
+    capture erase "`g'"
+}
+
 di as res _n "example_applyvarlabels.do complete."

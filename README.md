@@ -24,9 +24,9 @@ foreach x of local labels {       // <-- so the wrong label lands on each variab
 }
 ```
 
-`levelsof` sorts its list alphabetically (and drops the quotes off the first
-entry), so the labels end up on the wrong variables. The fix is to stop pairing
-by position and pair **by name** instead:
+`levelsof` returns the distinct labels sorted alphabetically, so pairing them
+positionally with the variables lines them up in the wrong order. The fix is to
+stop pairing by position and pair **by name** instead:
 
 ```stata
 import excel "survey.xlsx", sheet("data") firstrow clear   // your unlabeled data
@@ -154,14 +154,14 @@ label column. The dataset to label must already be in memory. See
 | `r(N_applied)` | variables that received a label |
 | `r(N_nomatch)` | crosswalk rows with no matching variable |
 | `r(N_nolabel)` | variables in memory with no crosswalk row |
-| `r(N_quoted)` | labels whose straight quotes were normalized to curly |
+| `r(N_normalized)` | labels altered for Stata (straight quotes, backticks) |
 | `r(N_long)` | labels over 80 characters (truncated by Stata) |
 | `r(applied)` | variables that received a label |
 | `r(nomatch)` | crosswalk names not found in memory |
 | `r(nolabel)` | variables in memory with no crosswalk row |
 | `r(dups)` | variables named more than once (last label wins) |
 | `r(blanks)` | variables whose crosswalk label cell was empty |
-| `r(quoted)` | variables whose label had straight quotes normalized to curly |
+| `r(normalized)` | variables whose label was altered for Stata (curly quotes, apostrophes) |
 | `r(dofile)` | path of the generated relabel do-file |
 | `r(smcl)` | path of the inventory `.smcl` file |
 
@@ -172,10 +172,14 @@ label column. The dataset to label must already be in memory. See
   `capture` never misfires. Leading/trailing spaces in the crosswalk are
   trimmed.
 - **Labels are capped at 80 characters** by Stata; longer labels are applied
-  truncated and counted in `r(N_long)`. Apostrophes and ampersands are
-  preserved (the do-file uses compound quotes). A straight double-quote (`"`)
-  cannot be stored in a Stata variable label at all, so straight quotes are
-  converted to typographic (curly) quotes, applied, and reported in `r(quoted)`.
+  truncated and counted in `r(N_long)`.
+- **Special characters.** Apostrophes, ampersands, and dollar signs are
+  preserved exactly (a `$name` is escaped in the generated do-file so it is not
+  macro-expanded when the file runs). Two characters a Stata label cannot carry
+  are normalized and reported in `r(normalized)`: a straight double-quote (`"`,
+  which `label variable` cannot parse) becomes a curly quote, and a backtick
+  (`` ` ``, which would start a macro reference when the do-file runs) becomes an
+  apostrophe.
 - **Nothing else changes**: the data keep their observations, sort order, and
   variable order; only variable labels are touched, and only for matched
   variables.

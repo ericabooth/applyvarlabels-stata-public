@@ -28,3 +28,4 @@ f applyvarlabels.ado
 f applyvarlabels.sthlp
 f example_applyvarlabels.do
 f example_varlabels.xlsx
+f make_example_varlabels.py

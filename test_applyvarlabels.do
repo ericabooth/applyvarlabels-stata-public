@@ -244,12 +244,108 @@ assert "`: variable label q'" != ""
 * ...and holds no straight double-quote character...
 assert strpos(`"`: variable label q'"', char(34)) == 0
 * ...and the variable is reported as normalized:
-assert "`r(quoted)'" == "q"
-assert r(N_quoted) == 1
+assert "`r(normalized)'" == "q"
+assert r(N_normalized) == 1
 * the non-quote text survived intact:
 assert strpos(`"`: variable label q'"', "They said ") == 1
 assert strpos(`"`: variable label q'"', " to the ") > 0
 di as res ">> TEST 10 passed (straight quotes normalized, applied, reported)"
+
+* ============================================================================
+* TEST 11 -- an empty label cell is skipped and reported in r(blanks)
+* ============================================================================
+clear
+input id keep1 skip1
+1 1 2
+end
+preserve
+clear
+input str8 Variable str40 Label
+"keep1" "kept label"
+"skip1" ""
+end
+export excel using "`scratch'.xlsx", firstrow(variables) replace
+restore
+applyvarlabels using "`scratch'.xlsx"
+assert "`: variable label keep1'" == "kept label"
+assert "`: variable label skip1'" == ""      // untouched (input-created, no label)
+assert "`r(blanks)'" == "skip1"
+di as res ">> TEST 11 passed (empty label cell skipped and reported)"
+
+* ============================================================================
+* TEST 12 -- smcl() names the inventory file; r(smcl) points to it; a second
+*   call without replace ERRORS rather than silently redirecting
+* ============================================================================
+clear
+input id m1
+1 1
+end
+preserve
+clear
+input str8 Variable str40 Label
+"m1" "measure one"
+end
+export excel using "`scratch'.xlsx", firstrow(variables) replace
+restore
+applyvarlabels using "`scratch'.xlsx", smcl("`scratch'_inv.smcl") replace
+assert "`: variable label m1'" == "measure one"
+capture confirm file "`scratch'_inv.smcl"
+assert _rc == 0
+assert "`r(smcl)'" == "`scratch'_inv.smcl"
+capture applyvarlabels using "`scratch'.xlsx", smcl("`scratch'_inv.smcl")
+assert _rc == 602
+di as res ">> TEST 12 passed (smcl() honored, r(smcl) set, no-replace errors)"
+
+* ============================================================================
+* TEST 13 -- a tab-delimited (.tsv) crosswalk
+* ============================================================================
+clear
+input id t1 t2
+1 1 2
+end
+preserve
+clear
+input str8 Variable str40 Label
+"t1" "tab one"
+"t2" "tab two"
+end
+export delimited using "`scratch'.tsv", delimiter(tab) replace
+restore
+applyvarlabels using "`scratch'.tsv"
+assert "`: variable label t1'" == "tab one"
+assert "`: variable label t2'" == "tab two"
+assert r(N_applied) == 2
+di as res ">> TEST 13 passed (.tsv crosswalk)"
+
+* ============================================================================
+* TEST 14 -- labels with $name and a backtick survive being written to and
+*   run from the relabel do-file (macro-expansion escaping)
+* ============================================================================
+clear
+input id d1 d2
+1 1 2
+end
+preserve
+clear
+set obs 2
+gen str12 Variable = cond(_n==1, "d1", "d2")
+gen str40 Label = ""
+replace Label = "Net worth in " + char(36) + "wealth" in 1
+replace Label = "code " + char(96) + "size" + char(39) + " ref" in 2
+export excel using "`scratch'.xlsx", firstrow(variables) replace
+restore
+global wealth "CORRUPT"          // would replace an unescaped $wealth
+applyvarlabels using "`scratch'.xlsx"
+macro drop wealth
+* $name label kept its literal dollar sign, not the global's value:
+local d1lab : variable label d1
+assert `"`macval(d1lab)'"' == "Net worth in \$wealth"
+* backtick label kept its backtick (no local expansion to empty):
+local d2lab : variable label d2
+assert strpos(`"`macval(d2lab)'"', char(96)) > 0
+assert strpos(`"`macval(d2lab)'"', "code ") == 1
+assert strpos(`"`macval(d2lab)'"', " ref") > 0
+di as res ">> TEST 14 passed (dollar-sign and backtick labels survive the do-file)"
 
 di as res _n "============================================================"
 di as res "ALL TESTS PASSED"
