@@ -24,7 +24,7 @@ program define applyvarlabels, rclass
     version 16.0
 
     syntax using/ [, Variable(name) Label(name) SHEET(string)          ///
-        DOfile(string) SMcl(string) REPLACE NOCASE NORun ]
+        DOfile(string) SMCL(string) REPLACE NOCASE NORUN ]
 
     * ------------------------------------------------------------------ setup --
     if "`variable'" == "" local variable Variable
