@@ -336,16 +336,17 @@ export excel using "`scratch'.xlsx", firstrow(variables) replace
 restore
 global wealth "CORRUPT"          // would replace an unescaped $wealth
 applyvarlabels using "`scratch'.xlsx"
+local normalizedret `r(normalized)'
 macro drop wealth
-* $name label kept its literal dollar sign, not the global's value:
+* $name label kept its LITERAL dollar sign, not the global's value (escaped \$):
 local d1lab : variable label d1
-assert `"`macval(d1lab)'"' == "Net worth in \$wealth"
-* backtick label kept its backtick (no local expansion to empty):
+assert `"`macval(d1lab)'"' == "Net worth in " + char(36) + "wealth"
+* backtick label had its backtick normalized to an apostrophe and is reported:
 local d2lab : variable label d2
-assert strpos(`"`macval(d2lab)'"', char(96)) > 0
-assert strpos(`"`macval(d2lab)'"', "code ") == 1
-assert strpos(`"`macval(d2lab)'"', " ref") > 0
-di as res ">> TEST 14 passed (dollar-sign and backtick labels survive the do-file)"
+assert strpos(`"`macval(d2lab)'"', char(96)) == 0     // no backtick remains
+assert "`: variable label d2'" == "code 'size' ref"   // -> apostrophes
+assert `: list posof "d2" in normalizedret'
+di as res ">> TEST 14 passed (dollar-sign preserved, backtick normalized)"
 
 di as res _n "============================================================"
 di as res "ALL TESTS PASSED"
