@@ -187,8 +187,8 @@ label column. The dataset to label must already be in memory. See
   upstream, a superset codebook) apply cleanly to whatever is present and are
   reported in `r(nomatch)` rather than raising an error.
 
-## License
+## Author and license
+
+Eric A. Booth, Sr Researcher, Texas 2036 (eric.a.booth@gmail.com).
 
 MIT. See [LICENSE](LICENSE). Copyright (c) 2026 Eric A. Booth.
-
-Support: eric.a.booth@gmail.com
