@@ -93,8 +93,9 @@ do example_applyvarlabels.do
 
 ## The example workbook
 
-`example_varlabels.xlsx` (regenerate with `python3 make_example_varlabels.py`)
-has two sheets, mirroring exactly how these data arrive:
+`example_varlabels.xlsx` (regenerate with `python3 make_example_varlabels.py`;
+the script lives in the GitHub repository and is not installed by `net install`
+or `net get`) has two sheets, mirroring exactly how these data arrive:
 
 - **`data`** - the first row is the variable names, the rows below are values.
   This is the unlabeled dataset.
@@ -154,18 +155,18 @@ label column. The dataset to label must already be in memory. See
 | `r(N_applied)` | variables that received a label |
 | `r(N_nomatch)` | crosswalk rows with no matching variable |
 | `r(N_nolabel)` | variables in memory with no crosswalk row |
-| `r(N_normalized)` | labels altered for Stata (straight quotes, backticks) |
+| `r(N_normalized)` | labels altered for Stata (straight quotes, backticks, line breaks) |
 | `r(N_long)` | labels over 80 characters (truncated by Stata) |
 | `r(applied)` | variables that received a label |
 | `r(nomatch)` | crosswalk names not found in memory |
 | `r(nolabel)` | variables in memory with no crosswalk row |
 | `r(dups)` | variables named more than once (last label wins) |
 | `r(blanks)` | variables whose crosswalk label cell was empty |
-| `r(normalized)` | variables whose label was altered for Stata (curly quotes, apostrophes) |
+| `r(normalized)` | variables whose label was altered for Stata (curly quotes, apostrophes, spaces for line breaks) |
 | `r(dofile)` | path of the generated relabel do-file |
 | `r(smcl)` | path of the inventory `.smcl` file |
 
-## Design notes (v1.0.0)
+## Design notes (v1.0.1)
 
 - **Matching is exact by default** (Stata is case-sensitive); `nocase` relaxes
   it, and the generated do-file then uses the variable's real spelling so
@@ -175,17 +176,34 @@ label column. The dataset to label must already be in memory. See
   truncated and counted in `r(N_long)`.
 - **Special characters.** Apostrophes, ampersands, and dollar signs are
   preserved exactly (a `$name` is escaped in the generated do-file so it is not
-  macro-expanded when the file runs). Two characters a Stata label cannot carry
-  are normalized and reported in `r(normalized)`: a straight double-quote (`"`,
-  which `label variable` cannot parse) becomes a curly quote, and a backtick
+  macro-expanded when the file runs). Three characters a Stata label cannot
+  carry are normalized and reported in `r(normalized)`: a straight double-quote
+  (`"`, which `label variable` cannot parse) becomes a curly quote, a backtick
   (`` ` ``, which would start a macro reference when the do-file runs) becomes an
-  apostrophe.
+  apostrophe, and a line break inside a cell (Excel Alt+Enter) becomes a space.
+  A `.csv` crosswalk is read with `bindquote(strict)`, so a quoted multi-line
+  label stays in one cell.
+- **A failed relabel run is reported honestly.** If the do-file stops part way,
+  the labels are rechecked on the data and only those actually applied are
+  counted in `r(N_applied)`; your `varabbrev` setting is restored on every exit.
 - **Nothing else changes**: the data keep their observations, sort order, and
   variable order; only variable labels are touched, and only for matched
   variables.
 - **The crosswalk can be broader than the data.** Extra rows (variables dropped
   upstream, a superset codebook) apply cleanly to whatever is present and are
   reported in `r(nomatch)` rather than raising an error.
+
+## Changes
+
+- **1.0.1 (2026-11-09):** a line break inside a crosswalk label is normalized
+  to a space (and reported in `r(normalized)`); in 1.0.0 it split the written
+  do-file line, the do-file stopped part way, and later labels were left
+  unapplied while still being counted. A `.csv` crosswalk is read with
+  `bindquote(strict)`. `varabbrev` is restored after an unexpected error. The
+  importer's `(N vars, N obs)` echo is no longer printed. The help now says the
+  do-file holds one line per matched variable. `make_example_varlabels.py` is
+  no longer in the package manifest (it stays in the repository).
+- **1.0.0 (2026-07-18):** first public release.
 
 ## Author and license
 

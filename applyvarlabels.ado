@@ -1,6 +1,14 @@
-*! version 1.0.0  20260718  Eric A. Booth, Sr Researcher, Texas 2036
+*! version 1.0.1  20261109  Eric A. Booth, Sr Researcher, Texas 2036
 *! applyvarlabels: label the variables in memory from a two-column
 *!                 (Variable, Label) crosswalk held in Excel or a CSV
+*! 1.0.1: a line break inside a label (Excel Alt+Enter) is normalized to a
+*!        space and reported in r(normalized), so the relabel do-file no
+*!        longer aborts part way; if the do-file does fail, the applied
+*!        counts are rechecked against the data.  A .csv crosswalk is read
+*!        with bindquote(strict), so a quoted multi-line label stays one
+*!        cell.  varabbrev is restored on every exit path, including an
+*!        unexpected error.  The importer's row-count echo is no longer
+*!        printed.
 *
 *  The problem (Statalist 1768839): you are handed a dataset of 100+ variables,
 *  none of them labeled, alongside a spreadsheet that lists each variable name
@@ -21,6 +29,18 @@
 *  The generated do-file is a keepable, rerunnable artifact (see dofile()).
 
 program define applyvarlabels, rclass
+    version 16.0
+    * the work runs in _applyvarlabels_main; this wrapper restores the user's
+    * varabbrev setting on every exit, including an unexpected error
+    local va0 = c(varabbrev)
+    capture noisily _applyvarlabels_main `macval(0)'
+    local rc = _rc
+    set varabbrev `va0'
+    if `rc' exit `rc'
+    return add
+end
+
+program define _applyvarlabels_main, rclass
     version 16.0
 
     syntax using/ [, Variable(name) Label(name) SHEET(string)          ///
@@ -95,12 +115,20 @@ program define applyvarlabels, rclass
     tempname cw
     frame create `cw'
     frame `cw' {
+        * quiet import; on failure the import is repeated noisily so its
+        * own error message is shown
         if "`how'" == "excel" ///
-            capture noisily import excel using `"`using'"', `sheetopt' firstrow allstring clear
+            capture import excel using `"`using'"', `sheetopt' firstrow allstring clear
         else ///
-            capture noisily import delimited using `"`using'"', varnames(1) stringcols(_all) clear
+            capture import delimited using `"`using'"', varnames(1) stringcols(_all) ///
+                bindquote(strict) maxquotedrows(unlimited) clear
         if _rc {
             local importrc = _rc
+            if "`how'" == "excel" ///
+                capture noisily import excel using `"`using'"', `sheetopt' firstrow allstring clear
+            else ///
+                capture noisily import delimited using `"`using'"', varnames(1) stringcols(_all) ///
+                    bindquote(strict) maxquotedrows(unlimited) clear
         }
         else {
             quietly ds
@@ -165,7 +193,12 @@ program define applyvarlabels, rclass
         forvalues i = 1/`ncross' {
             local vname = strtrim(`vcol'[`i'])
             local vlab  = strtrim(`lcol'[`i'])
-            if "`vname'" == "" continue          // blank / spacer row
+            if `"`macval(vname)'"' == "" continue    // blank / spacer row
+            * a variable name cannot hold quotes, backticks, $ or line breaks;
+            * blank them out so the name is reported as a nomatch, not parsed
+            foreach ch in 34 96 36 10 13 {
+                local vname = subinstr(`"`macval(vname)'"', char(`ch'), "?", .)
+            }
 
             * resolve the crosswalk name to a real variable in memory ----------
             local realname ""
@@ -181,7 +214,7 @@ program define applyvarlabels, rclass
                 local ++nmisses
                 continue
             }
-            if `"`vlab'"' == "" {
+            if `"`macval(vlab)'"' == "" {
                 local blanks `blanks' `realname'
                 continue
             }
@@ -196,6 +229,15 @@ program define applyvarlabels, rclass
             }
             if strpos(`"`macval(vlab)'"', char(96)) {
                 local vlab = subinstr(`"`macval(vlab)'"', char(96), char(39), .)
+                local normalized `normalized' `realname'
+            }
+            *   - a line break (Excel Alt+Enter) -- it would end the written
+            *     line, so the relabel do-file would abort; it becomes a space.
+            if strpos(`"`macval(vlab)'"', char(10)) | strpos(`"`macval(vlab)'"', char(13)) {
+                local vlab = subinstr(`"`macval(vlab)'"', char(13) + char(10), " ", .)
+                local vlab = subinstr(`"`macval(vlab)'"', char(13), " ", .)
+                local vlab = subinstr(`"`macval(vlab)'"', char(10), " ", .)
+                local vlab = strtrim(stritrim(`"`macval(vlab)'"'))
                 local normalized `normalized' `realname'
             }
             local wasseen : list posof "`realname'" in seen
@@ -214,6 +256,7 @@ program define applyvarlabels, rclass
             file write `fh' `"`macval(line)'"' _n
             local matched `matched' `realname'
             local ++napplied
+            local want`napplied' `"`macval(vlab)'"'
         }
     }
 
@@ -230,9 +273,35 @@ program define applyvarlabels, rclass
     set varabbrev `va'      // always restored, even if the do-file aborted
     if `dorc' di as err "warning: the relabel do-file did not run cleanly (r(`dorc')); some labels may be unapplied"
 
+    * after a failed run, count as applied only the variables whose label in the
+    * data now matches the crosswalk (the last row wins for a duplicate; a long
+    * label counts when Stata's truncated label is its leading part)
+    if `dorc' {
+        local ok ""
+        local done ""
+        forvalues j = `napplied'(-1)1 {
+            local m : word `j' of `matched'
+            local isdone : list m in done
+            if `isdone' continue
+            local done `done' `m'
+            local cur : variable label `m'
+            if `"`macval(cur)'"' == `"`macval(want`j')'"' local ok `m' `ok'
+            else if `"`macval(cur)'"' != "" & ustrlen(`"`macval(want`j')'"') > 80 {
+                if strpos(`"`macval(want`j')'"', `"`macval(cur)'"') == 1 local ok `m' `ok'
+            }
+        }
+        local matched0 `matched'
+        local matched `ok'
+        local unreached : list uniq matched0
+        local unreached : list unreached - ok
+        di as err "  labels verified on the data after the failed run: `: word count `matched''"
+        if "`unreached'" != "" di as err "  crosswalk labels not applied: `unreached'"
+    }
+
     * what did not line up ------------------------------------------------------
     local applied  : list uniq matched
-    local unlabeled : list mainvars - matched
+    if "`matched0'" != "" local unlabeled : list mainvars - matched0
+    else                  local unlabeled : list mainvars - matched
     local dupsu    : list uniq dups
     local normalizedu : list uniq normalized
     local nmiss  = `nmisses'                // row count (robust to spaced names)

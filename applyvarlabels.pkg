@@ -22,10 +22,9 @@ d
 d Author: Eric A. Booth, Sr Researcher, Texas 2036
 d Support: eric.a.booth@gmail.com
 d
-d Distribution-Date: 20260718
+d Distribution-Date: 20261109
 d
 f applyvarlabels.ado
 f applyvarlabels.sthlp
 f example_applyvarlabels.do
 f example_varlabels.xlsx
-f make_example_varlabels.py

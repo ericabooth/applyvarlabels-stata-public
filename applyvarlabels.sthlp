@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.0.0  2026-07-18}{...}
+{* *! version 1.0.1  2026-11-09}{...}
 {viewerjumpto "Syntax" "applyvarlabels##syntax"}{...}
 {viewerjumpto "Description" "applyvarlabels##description"}{...}
 {viewerjumpto "What you get back" "applyvarlabels##output"}{...}
@@ -64,7 +64,8 @@ up in the wrong order.{p_end}
 label to its variable {bf:by name}, never by position.  It then:{p_end}
 
 {phang2}1. {bf:Writes a capture-guarded relabel do-file}: one
-{cmd:capture label variable} line per crosswalk row.  {cmd:capture} means a
+{cmd:capture label variable} line per matched variable (crosswalk rows with no
+such variable are reported, not written).  {cmd:capture} means a
 variable named in the crosswalk but absent from the data is skipped, not an
 error {c 45} so the file is safe to rerun on any dataset that shares the
 names.{p_end}
@@ -176,7 +177,7 @@ no matching variable and the one variable with no crosswalk row.{p_end}
 {synopt :{cmd:r(N_applied)}}variables that received a label{p_end}
 {synopt :{cmd:r(N_nomatch)}}crosswalk rows with no matching variable{p_end}
 {synopt :{cmd:r(N_nolabel)}}variables in memory with no crosswalk row{p_end}
-{synopt :{cmd:r(N_normalized)}}labels altered for Stata (straight quotes, backticks){p_end}
+{synopt :{cmd:r(N_normalized)}}labels altered for Stata (straight quotes, backticks, line breaks){p_end}
 {synopt :{cmd:r(N_long)}}labels over 80 characters (truncated by Stata){p_end}
 
 {p2col 5 18 22 2: Macros}{p_end}
@@ -185,7 +186,7 @@ no matching variable and the one variable with no crosswalk row.{p_end}
 {synopt :{cmd:r(nolabel)}}variables in memory with no crosswalk row{p_end}
 {synopt :{cmd:r(dups)}}variables named more than once in the crosswalk (last label wins){p_end}
 {synopt :{cmd:r(blanks)}}variables whose crosswalk label cell was empty (skipped){p_end}
-{synopt :{cmd:r(normalized)}}variables whose label was altered for Stata (curly quotes, apostrophes){p_end}
+{synopt :{cmd:r(normalized)}}variables whose label was altered for Stata (curly quotes, apostrophes, spaces for line breaks){p_end}
 {synopt :{cmd:r(dofile)}}path of the generated relabel do-file{p_end}
 {synopt :{cmd:r(smcl)}}path of the inventory {cmd:.smcl} file{p_end}
 {p2colreset}{...}
@@ -218,13 +219,22 @@ label longer than 80 characters; {cmd:applyvarlabels} counts such labels in
 
 {pstd}{bf:Special characters.}  Apostrophes, ampersands, and dollar signs are
 preserved exactly {c 45} a {cmd:{c 36}}name in a label is escaped in the
-generated do-file so it is not macro-expanded when that file runs.  Two
+generated do-file so it is not macro-expanded when that file runs.  Three
 characters a Stata variable label cannot carry are normalized instead, and the
 affected variables are listed in {cmd:r(normalized)} with a note: a
 {it:straight double quote} ({cmd:{c 34}}), which {helpb label:label variable}
-cannot parse, becomes a typographic (curly) quote; and a {it:backtick}
+cannot parse, becomes a typographic (curly) quote; a {it:backtick}
 ({cmd:{c 96}}), which would open a macro reference when the relabel do-file
-runs, becomes an apostrophe.{p_end}
+runs, becomes an apostrophe; and a {it:line break} inside a cell (Excel
+Alt+Enter), which would split the written line, becomes a space.  A
+{cmd:.csv} crosswalk is read with {cmd:bindquote(strict)}, so a quoted label
+that spans lines stays in one cell.{p_end}
+
+{pstd}{bf:If the do-file fails.}  Should the relabel do-file stop part way,
+{cmd:applyvarlabels} warns, rechecks the labels on the data, and counts in
+{cmd:r(N_applied)} and {cmd:r(applied)} only the variables whose label now
+matches the crosswalk; the rest are listed as not applied.  Your
+{cmd:varabbrev} setting is restored on every exit.{p_end}
 
 {pstd}{bf:Nothing else changes.}  The crosswalk is read in a separate frame;
 the data in memory keep their sort order, their observations, and their
